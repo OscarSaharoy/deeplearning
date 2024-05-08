@@ -30,17 +30,11 @@ def loss( obs, weights, target ):
 def check( obs, weights, target ):
     return np.argmax( predict( obs, weights ) ) == np.argmax( target )
 
-def loss_sum( obss, weights, targets ):
-    return sum(
-        loss( obs, weights, target )
-        for obs, target in zip(obss, targets)
-    )
-
-def check_sum( obss, weights, targets ):
+def test_eval( obss, weights, targets ):
     return sum(
         check( obs, weights, target )
         for obs, target in zip(obss, targets)
-    )
+    ) / targets.shape[0]
 
 def dldw( obs, weights, target ):
     w1, w2 = weights
@@ -50,7 +44,7 @@ def dldw( obs, weights, target ):
     z_out = w2 @ hid
     pred = act( z_out )
 
-    error_pred = 2 * ( pred - target )  
+    error_pred = 2 * ( pred - target ) * dact(z_out)
     error_hid = w2.T @ error_pred * dact(z_hid)
 
     dlossdw2 = np.outer( error_pred, hid )
@@ -58,13 +52,7 @@ def dldw( obs, weights, target ):
 
     return dlossdw1, dlossdw2
 
-
-np.random.seed(1)
-w1 = np.random.rand(40, 28*28) - .5
-w2 = np.random.rand(10, 40) - .5
-w1 *= .2
-w2 *= .2
-weights = [ w1, w2 ]
+# load dataset
 
 with np.load( "mnist.npz", allow_pickle=True ) as f:
     x_train, y_train = f["x_train"], f["y_train"]
@@ -72,9 +60,9 @@ with np.load( "mnist.npz", allow_pickle=True ) as f:
 
 # training set
 
-obss = x_train[:1000].reshape( 1000, 28*28 ) / 256
-targets = np.zeros((1000, 10))
-targets[np.arange(1000), y_train[:1000]] = 1
+obss = x_train[:10000].reshape( 10000, 28*28 ) / 256
+targets = np.zeros((10000, 10))
+targets[np.arange(10000), y_train[:10000]] = 1
 
 # test set
 
@@ -82,27 +70,38 @@ obss_test = x_test[:1000].reshape( 1000, 28*28 ) / 256
 targets_test = np.zeros((1000, 10))
 targets_test[np.arange(1000), y_test[:1000]] = 1
 
-a = 0.0005
+# init network
+
+np.random.seed(1)
+w1 = np.random.rand(40, 28*28) - .5
+w2 = np.random.rand(10, 40) - .5
+w1 *= .2
+w2 *= .2
+weights = [ w1, w2 ]
+a = 0.005
+
+# training loop
 
 try:
-    for epoch in range(1001):
+    for epoch in range(11):
         for i, obs in enumerate(obss):
             target = targets[i]
             dw1, dw2 = dldw( obs, weights, target )
             weights[0] -= a * dw1
             weights[1] -= a * dw2
+        print(
+            "epoch", epoch,
+            "- test accuracy", f"{test_eval( obss_test, weights, targets_test ) * 100:.1f}%"
+        )
 
-        if epoch % 10 == 0:
-            print(
-                "epoch", epoch,
-                "- check_sum", check_sum( obss_test, weights, targets_test )
-            )
 except KeyboardInterrupt:
     print("ending training!")
 
-# once training is done, save the weights to a file
+# save the weights to a file
+
 np.savez( "weights.npz", w1=weights[0], w2=weights[1] )
 
 # to load the weights
+
 with np.load( "weights.npz", allow_pickle=True ) as f:
     weights = [ f["w1"], f["w2"] ]
