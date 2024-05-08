@@ -10,12 +10,12 @@ def sigmoid( x ):
     return 1 / ( 1 + np.exp(-x) )
 def dsigmoid( x ):
     return sigmoid(x) * ( 1 - sigmoid(x) )
-"""
 act = relu
 dact = drelu
 """
 act = sigmoid
 dact = dsigmoid
+"""
 
 def predict( obs, weights ):
     res = obs
@@ -45,16 +45,19 @@ def check_sum( obss, weights, targets ):
 def dldw( obs, weights, target ):
     w1, w2 = weights
 
-    hid = act( w1 @ obs )
-    pred = act( w2 @ hid )
+    z_hid = w1 @ obs
+    hid = act( z_hid )
+    z_out = w2 @ hid
+    pred = act( z_out )
 
-    error_pred = pred - target
-    error_hid = w2.T @ error_pred * dact(hid)
+    error_pred = 2 * ( pred - target )  
+    error_hid = w2.T @ error_pred * dact(z_hid)
 
     dlossdw2 = np.outer( error_pred, hid )
     dlossdw1 = np.outer( error_hid, obs )
 
     return dlossdw1, dlossdw2
+
 
 np.random.seed(1)
 w1 = np.random.rand(40, 28*28) - .5
@@ -100,6 +103,6 @@ except KeyboardInterrupt:
 # once training is done, save the weights to a file
 np.savez( "weights.npz", w1=weights[0], w2=weights[1] )
 
-# load the weights from a file
+# to load the weights
 with np.load( "weights.npz", allow_pickle=True ) as f:
     weights = [ f["w1"], f["w2"] ]
