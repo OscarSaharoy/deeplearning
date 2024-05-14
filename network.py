@@ -10,6 +10,8 @@ def sigmoid( x ):
     return 1 / ( 1 + np.exp(-x) )
 def dsigmoid( x ):
     return sigmoid(x) * ( 1 - sigmoid(x) )
+def softmax( x ):
+    return np.exp(x) / sum( np.exp(x) )
 act = relu
 dact = drelu
 """
@@ -18,10 +20,13 @@ dact = dsigmoid
 """
 
 def predict( obs, weights ):
-    res = obs
-    for w in weights:
-        res = act( w @ res )
-    return res
+    w1, w2 = weights
+
+    z_hid = w1 @ obs
+    hid = act( z_hid )
+    z_out = w2 @ hid
+    pred = softmax( z_out )
+    return pred
 
 def loss( obs, weights, target ):
     pureloss = predict( obs, weights ) - target
@@ -42,9 +47,9 @@ def dldw( obs, weights, target ):
     z_hid = w1 @ obs
     hid = act( z_hid )
     z_out = w2 @ hid
-    pred = act( z_out )
+    pred = softmax( z_out )
 
-    error_pred = 2 * ( pred - target ) * dact(z_out)
+    error_pred = 2 * ( pred - target ) * pred * ( 1 - pred )
     error_hid = w2.T @ error_pred * dact(z_hid)
 
     dlossdw2 = np.outer( error_pred, hid )
@@ -78,7 +83,7 @@ w2 = np.random.rand(10, 40) - .5
 w1 *= .2
 w2 *= .2
 weights = [ w1, w2 ]
-a = 0.005
+a = 0.05
 
 # training loop
 
